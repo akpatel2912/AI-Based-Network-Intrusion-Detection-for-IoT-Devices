@@ -1,0 +1,36 @@
+{
+  "xgboost": {
+    "accuracy": 0.9937,
+    "precision": 0.98,
+    "recall": 0.9983,
+    "f1": 0.9891,
+    "roc_auc": 0.9992,
+    "confusion_matrix": [
+      [
+        59513,
+        487
+      ],
+      [
+        40,
+        23843
+      ]
+    ]
+  },
+  "random_forest": {
+    "accuracy": 0.9949,
+    "precision": 0.9831,
+    "recall": 0.9992,
+    "f1": 0.9911,
+    "roc_auc": 0.9992,
+    "confusion_matrix": [
+      [
+        59590,
+        410
+      ],
+      [
+        20,
+        23863
+      ]
+    ]
+  }
+}

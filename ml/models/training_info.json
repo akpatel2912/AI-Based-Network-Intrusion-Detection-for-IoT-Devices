@@ -1,0 +1,24 @@
+{
+  "features": [
+    "rst_count",
+    "ICMP",
+    "Min",
+    "AVG",
+    "IAT",
+    "Number",
+    "Variance",
+    "Weight"
+  ],
+  "train_rows": 335528,
+  "test_rows": 83883,
+  "xgboost_feature_importance": {
+    "rst_count": 0.6792,
+    "ICMP": 0.0005,
+    "Min": 0.0022,
+    "AVG": 0.0043,
+    "IAT": 0.031,
+    "Number": 0.0936,
+    "Variance": 0.0142,
+    "Weight": 0.1751
+  }
+}
