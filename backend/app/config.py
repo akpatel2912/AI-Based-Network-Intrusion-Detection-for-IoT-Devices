@@ -11,6 +11,7 @@ class Settings(BaseSettings):
     cors_origins: list[str] = ["http://127.0.0.1:5500", "http://localhost:5500"]
     model_file: str = "xgboost_model.pkl"
     ml_src_dir: Path = ROOT / "ml" / "src"
+    frontend_dir: Path = ROOT / "frontend"
     metrics_path: Path = ROOT / "ml" / "models" / "metrics.json"
 
     model_config = SettingsConfigDict(env_file=".env")

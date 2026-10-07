@@ -1,6 +1,7 @@
 // ===== Config: change this to your FastAPI URL =====
-const API_BASE_URL = "http://localhost:8000";
-
+// When the page is opened from the backend (port 8000) it uses the same address automatically.
+const API_BASE_URL = (location.protocol === "file:" || location.port === "5500") ? "http://127.0.0.1:8000" : location.origin;
+ 
 const FEATURES = [
   ["rst_count", "Number of TCP reset flags"],
   ["ICMP", "ICMP packet indicator (0 or 1)"],
@@ -15,13 +16,13 @@ const SAMPLES = { // real rows from CICIoT2023
   normal: { rst_count: 0, ICMP: 1, Min: 42, AVG: 42, IAT: 83124075.84, Number: 9.5, Variance: 0, Weight: 141.55 },
   attack: { rst_count: 7391.2, ICMP: 0, Min: 66, AVG: 1144.67, IAT: 166522106.15, Number: 13.5, Variance: 1, Weight: 244.6 },
 };
-
+ 
 const $ = (id) => document.getElementById(id);
 let records = [];
 let page = 0;
 const PER = 10;
 const demo = () => $("demo").checked;
-
+ 
 // ===== Toast =====
 function toast(msg) {
   const t = $("toast");
@@ -29,14 +30,14 @@ function toast(msg) {
   t.style.display = "block";
   setTimeout(() => (t.style.display = "none"), 4000);
 }
-
+ 
 let lastNetToast = 0;
 function netToast(e) { // at most one error popup per 30 seconds, so auto-refresh does not spam
   if (Date.now() - lastNetToast < 30000) return;
   lastNetToast = Date.now();
   toast("Cannot reach the API (" + e.message + "). Is the backend running? Is Demo mode off? Check API_BASE_URL.");
 }
-
+ 
 // ===== API layer (all backend calls live here) =====
 function mockRecords() {
   const out = [];
@@ -72,6 +73,10 @@ const api = {
     }
     return this.call("/predict", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(f) });
   },
+  async stats() {
+    if (demo()) return statsFrom(records);
+    return this.call("/stats");
+  },
   async predictions() {
     return demo() ? records : this.call("/predictions");
   },
@@ -83,8 +88,13 @@ const api = {
     } catch (e) { netToast(e); return null; }
   },
 };
-
+ 
 // ===== Helpers =====
+function statsFrom(rs) { // used by Demo mode only
+  const a = rs.filter((r) => r.prediction === "Attack"), o = rs.filter((r) => r.prediction === "Normal");
+  const m = (x) => (x.length ? x.reduce((t, r) => t + r.confidence, 0) / x.length : 0);
+  return { total: rs.length, normal: o.length, attack: a.length, avg_confidence_normal: m(o), avg_confidence_attack: m(a) };
+}
 const fmt = (iso) => new Date(iso).toLocaleString();
 const badge = (p) => `<span class="tag ${p === "Attack" ? "red" : "green"}">${p}</span>`;
 const feat = (f) => Object.entries(f).map(([k, v]) => k + "=" + v).join(", ");
@@ -93,11 +103,13 @@ function table(el, rows) {
     (rows.length ? rows.map((r) => `<tr><td>${r.id}</td><td>${fmt(r.timestamp)}</td><td>${feat(r.features)}</td><td>${badge(r.prediction)}</td><td>${Math.round(r.confidence * 100)}%</td></tr>`).join("")
       : '<tr><td colspan="5" class="muted">No predictions yet. Use Analyze traffic to create one.</td></tr>');
 }
-
+ 
 // ===== Dashboard =====
 async function renderDash() {
   try { records = demo() && !records.length ? mockRecords() : await api.predictions(); } catch { records = []; }
-  const n = records.length, a = records.filter((r) => r.prediction === "Attack").length, ok = n - a;
+  let st; // real totals from the database, so the numbers keep growing past 500
+  try { st = await api.stats(); } catch { st = statsFrom([]); }
+  const n = st.total, a = st.attack, ok = st.normal;
   $("stats").innerHTML = [["Total predictions", n], ["Normal", ok], ["Attacks", a], ["Attack rate", (n ? Math.round((a / n) * 100) : 0) + "%"]]
     .map(([l, v]) => `<div class="card"><b>${v}</b><span>${l}</span></div>`).join("");
   // donut
@@ -106,9 +118,9 @@ async function renderDash() {
     <circle cx="50" cy="50" r="40" fill="none" stroke="#f87171" stroke-width="14" stroke-dasharray="${da} ${C}" transform="rotate(-90 50 50)"/></svg>
     <div class="legend"><span>Normal ${ok}</span><span>Attack ${a}</span></div>`;
   // line: split records into up to 10 buckets
-  const B = Math.min(10, n || 1), size = Math.ceil(n / B) || 1, bk = [];
-  for (let i = 0; i < n; i += size) {
-    const s = records.slice(i, i + size);
+  const L = records.length, B = Math.max(1, Math.min(10, L)), bk = []; // only the rows we actually have
+  for (let b = 0; b < B; b++) {
+    const s = records.slice(Math.floor((b * L) / B), Math.floor(((b + 1) * L) / B));
     bk.push([s.filter((r) => r.prediction === "Normal").length, s.filter((r) => r.prediction === "Attack").length]);
   }
   const mx = Math.max(1, ...bk.flat()), W = 300, H = 120;
@@ -116,12 +128,12 @@ async function renderDash() {
   $("line").innerHTML = `<svg viewBox="0 0 ${W} ${H}" width="100%" height="140" preserveAspectRatio="none"><polyline points="${pts(0)}" fill="none" stroke="#34d399" stroke-width="2"/><polyline points="${pts(1)}" fill="none" stroke="#f87171" stroke-width="2"/></svg>
     <div class="legend"><span>Normal</span><span>Attack</span></div>`;
   // avg confidence
-  const avg = (p) => { const s = records.filter((r) => r.prediction === p); return s.length ? s.reduce((t, r) => t + r.confidence, 0) / s.length : 0; };
+  const avg = (p) => (p === "Normal" ? st.avg_confidence_normal : st.avg_confidence_attack);
   $("bars").innerHTML = [["Normal", "#34d399"], ["Attack", "#f87171"]].map(([p, c]) =>
     `<div>${p} <span class="muted">${Math.round(avg(p) * 100)}%</span><div class="bar"><i style="width:${avg(p) * 100}%;background:${c}"></i></div></div>`).join("");
   table($("recent"), records.slice(-10).reverse());
 }
-
+ 
 // ===== Analyze =====
 function buildForm() {
   $("fields").innerHTML = FEATURES.map(([k, tip]) =>
@@ -151,7 +163,7 @@ $("form").onsubmit = async (e) => {
     $("result").innerHTML = '<p class="err">The analysis failed.</p><button class="btn ghost" onclick="document.getElementById(\'form\').requestSubmit()">Retry</button>';
   }
 };
-
+ 
 // ===== History =====
 async function renderHist() {
   try { records = demo() && !records.length ? mockRecords() : await api.predictions(); } catch { records = []; }
@@ -174,7 +186,7 @@ $("export").onclick = () => {
   a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
   a.download = "predictions.csv"; a.click();
 };
-
+ 
 // ===== Model info =====
 async function renderModel() {
   const m = await api.metrics();
@@ -185,7 +197,7 @@ async function renderModel() {
       <p>Confusion matrix: <b>${d && d.confusion_matrix ? JSON.stringify(d.confusion_matrix) : "Not available yet"}</b></p></div>`;
   }).join("");
 }
-
+ 
 // ===== Router =====
 const routes = { "/": ["dash", renderDash], "/analyze": ["analyze", () => {}], "/history": ["history", renderHist], "/model": ["model", renderModel] };
 function route() {
@@ -200,7 +212,7 @@ $("demo").onchange = () => { $("demoTag").style.display = demo() ? "" : "none"; 
 window.onhashchange = route;
 buildForm();
 route();
-
+ 
 // Live updates: re-fetch the dashboard / history every 5 seconds (real API only)
 setInterval(() => {
   if (demo() || document.hidden) return;

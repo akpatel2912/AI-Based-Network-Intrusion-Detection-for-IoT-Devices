@@ -1,12 +1,10 @@
-pandas
-numpy
-scikit-learn
-xgboost
-joblib
-matplotlib
 fastapi
 uvicorn[standard]
 sqlalchemy>=2.0
 pydantic-settings
 psycopg2-binary
-httpx
+pandas
+numpy
+scikit-learn
+xgboost
+joblib

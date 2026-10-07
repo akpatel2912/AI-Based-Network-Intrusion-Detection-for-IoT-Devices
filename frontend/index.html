@@ -28,7 +28,7 @@
     <div class="cards" id="stats"></div>
     <div class="grid">
       <div class="panel"><h3>Normal vs attack</h3><div id="donut"></div></div>
-      <div class="panel"><h3>Predictions over time</h3><div id="line"></div></div>
+      <div class="panel"><h3>Predictions over time (latest 500)</h3><div id="line"></div></div>
       <div class="panel"><h3>Average confidence</h3><div id="bars"></div></div>
     </div>
     <div class="panel"><h3>Recent predictions</h3><div class="scroll"><table id="recent"></table></div></div>
@@ -50,7 +50,7 @@
   </section>
 
   <section id="history" class="page">
-    <h2>History</h2>
+    <h2>History <small class="muted">(latest 500 predictions)</small></h2>
     <div class="row">
       <select id="filter"><option value="all">All</option><option value="Normal">Normal</option><option value="Attack">Attack</option></select>
       <input id="search" placeholder="Search by ID or feature value">

@@ -1,4 +1,4 @@
--- Run this in the Supabase SQL editor (or psql). The API also creates it automatically if missing.
+
 CREATE TABLE IF NOT EXISTS predictions (
     id          SERIAL PRIMARY KEY,
     created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),

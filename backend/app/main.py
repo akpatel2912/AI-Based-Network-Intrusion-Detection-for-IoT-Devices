@@ -3,7 +3,8 @@ from contextlib import asynccontextmanager
 from datetime import timezone
 from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from sqlalchemy import select
+from fastapi.staticfiles import StaticFiles
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from .config import settings
@@ -54,8 +55,27 @@ def predictions(limit: int = 500, db: Session = Depends(get_db)):
     ) for r in reversed(rows)]          # oldest first, like the frontend expects
 
 
+@app.get("/stats")
+def stats(db: Session = Depends(get_db)):
+    """Real totals over ALL saved predictions (not limited to the latest 500)."""
+    out = {"total": 0, "normal": 0, "attack": 0, "avg_confidence_normal": 0.0, "avg_confidence_attack": 0.0}
+    rows = db.execute(select(Prediction.prediction, func.count(Prediction.id), func.avg(Prediction.confidence))
+                      .group_by(Prediction.prediction)).all()
+    for label, count, avg_conf in rows:
+        key = label.lower()
+        out[key] = count
+        out["avg_confidence_" + key] = round(float(avg_conf or 0), 4)
+        out["total"] += count
+    return out
+
+
 @app.get("/metrics")
 def metrics():
     if not settings.metrics_path.exists():
         raise HTTPException(404, "metrics.json not found. Run ml/src/evaluate.py first.")
     return json.loads(settings.metrics_path.read_text())
+
+
+
+if settings.frontend_dir.exists():
+    app.mount("/", StaticFiles(directory=settings.frontend_dir, html=True), name="frontend")

@@ -1,16 +1,20 @@
-   # Python
-   __pycache__/
-   *.pyc
-   venv/
-   .venv/
-
-   # Secrets and local data
-   .env
-   *.db
-   *.db-journal
-
-   # Dataset and trained models (recreated by the scripts)
-   ml/data/raw/*.csv
-   ml/data/processed/*
-   ml/models/*.pkl
-   ml/models/*.json
+# Python
+__pycache__/
+*.pyc
+venv/
+.venv/
+ 
+# Secrets and local data
+.env
+*.db
+*.db-journal
+ 
+# Dataset and processed data (too big for GitHub; recreated by the scripts)
+ml/data/raw/*.csv
+ml/data/processed/*
+ 
+# Random Forest is only for comparison and is not used by the API
+ml/models/random_forest_model.pkl
+ 
+# NOTE: xgboost_model.pkl, selected_features.pkl and metrics.json are NOT ignored,
+# because the deployed server (Render) needs them.
